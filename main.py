@@ -9,23 +9,27 @@ from inicio import boton
 class JuegoIntruso:
 
   def __init__(self):
+    # Inicialización de módulos principales de Pygame
     pygame.init()
+    pygame.mixer.init()
 
-    # Configuración de ventana estandarizada
+    # --- CONFIGURACIÓN DE VENTANA ---
     self.ANCHO, self.ALTO = 1280, 720
     self.pantalla = pygame.display.set_mode((self.ANCHO, self.ALTO))
     pygame.display.set_caption("Encuentra al Intruso")
 
+    # Control de tasa de refresco (FPS)
     self.clock = pygame.time.Clock()
 
-    # Colores
+    # --- PALETA DE COLORES ---
     self.BLANCO = (245, 245, 245)
     self.NEGRO = (30, 30, 30)
-    self.VERDE = (46, 204, 113)
-    self.ROJO = (231, 76, 60)
+    self.VERDE = (46, 204, 113)  # Usado para acierto en la casilla
+    self.ROJO = (231, 76, 60)  # Usado para fallo en la casilla
     self.AMARILLO = (255, 255, 0)
+    self.GRIS_CELDA = (220, 220, 220)
 
-    # Base de datos de categorías
+    # --- BASE DE DATOS DE CATEGORÍAS Y ELEMENTOS ---
     self.CATEGORIAS = {
         "FRUTAS": [
             {"normal": "🍎", "intruso": "🍐"},
@@ -47,36 +51,57 @@ class JuegoIntruso:
         ],
     }
 
+    # --- CONFIGURACIÓN Y ESTADO INICIAL ---
     self.categoria_seleccionada = "FRUTAS"
     self.dificultad_actual = "FACIL"
+    self.pareja_actual = (
+        None  # Almacena el par activo {"normal": ..., "intruso": ...}
+    )
 
-    # Estado del juego
     self.puntuacion = 0
     self.tiempo_restante = 60.0
     self.estado_juego = "MENU"
-    self.estado_anterior = "MENU"  # Guarda el estado previo a ver los scores
+    self.estado_anterior = "MENU"
     self.grid = []
     self.posiciones_intrusos = set()
 
-    # Archivo de persistencia de puntajes
+    # --- FEEDBACK VISUAL SIN BLOQUEAR PANTALLA ---
+    self.casilla_feedback = (
+        None  # Registra la posición tocada: ((col, fila), es_correcto)
+    )
+    self.tiempo_feedback = 0  # Marca de tiempo para finalizar el resaltado
+
+    # --- SISTEMA DE PUNTAJES MÁXIMOS (PERSISTENCIA) ---
     self.archivo_scores = "scores.json"
     self.scores = self.cargar_scores()
 
-    # Fuentes
+    # --- CARGA ÚNICA DE EFECTOS SONOROS (AL INICIAR EL JUEGO) ---
+    try:
+      self.snd_correcto = pygame.mixer.Sound("correcto.mp3")
+      self.snd_incorrecto = pygame.mixer.Sound("incorrecto.mp3")
+      self.snd_correcto.set_volume(0.7)
+      self.snd_incorrecto.set_volume(0.3)
+    except Exception as e:
+      print(f"Aviso: No se pudieron cargar los efectos de sonido: {e}")
+      self.snd_correcto = None
+      self.snd_incorrecto = None
+
+    # --- FUENTES Y TIPOGRAFÍAS ---
     self.fuente = pygame.font.SysFont("Segoe UI Emoji", 40)
     self.fuente_texto = pygame.font.SysFont("Arial", 24, bold=True)
     self.fuente_titulo = pygame.font.SysFont("Arial", 48, bold=True)
 
-    # Cargar assets
-    self.background = pygame.image.load("fondo.jpg").convert()
+    # --- RECURSOS GRÁFICOS (FONDO) ---
+    self.background = pygame.image.load("fondo1.jpg").convert()
     self.background = pygame.transform.scale(
         self.background, (self.ANCHO, self.ALTO)
     )
 
+    # Inicialización de la interfaz de botones
     self.inicializar_botones()
 
   def cargar_scores(self):
-    """Carga la puntuación máxima asegurando que los valores sean enteros."""
+    """Carga los puntajes máximos desde el archivo JSON si existe."""
     scores_predeterminados = {
         "FACIL": 0,
         "MEDIO": 0,
@@ -99,7 +124,7 @@ class JuegoIntruso:
     return scores_predeterminados
 
   def guardar_scores(self):
-    """Guarda las puntuaciones máximas en el archivo JSON."""
+    """Guarda las puntuaciones actuales en el archivo JSON."""
     try:
       with open(self.archivo_scores, "w") as f:
         json.dump(self.scores, f, indent=4)
@@ -107,12 +132,13 @@ class JuegoIntruso:
       print(f"Error al guardar scores: {e}")
 
   def registrar_puntuacion(self, dificultad, puntos):
-    """Actualiza la puntuación máxima si la actual la supera."""
+    """Actualiza la puntuación máxima registrada si se supera el récord."""
     if puntos > self.scores.get(dificultad, 0):
       self.scores[dificultad] = puntos
       self.guardar_scores()
 
   def inicializar_botones(self):
+    """Crea y posiciona todos los botones de los menús e interfaces."""
     self.boton_inicio = boton(self.pantalla, "Jugar")
     self.boton_score = boton(self.pantalla, "Score")
     self.boton_facil = boton(self.pantalla, "Facil")
@@ -125,12 +151,12 @@ class JuegoIntruso:
     self.boton_futbol = boton(self.pantalla, "Futbol")
     self.boton_emojis = boton(self.pantalla, "Emojis")
 
-    # Botones específicos para la pantalla Game Over
+    # Botones de la pantalla de Juego Terminado
     self.boton_reiniciar = boton(self.pantalla, "Reiniciar")
     self.boton_score_go = boton(self.pantalla, "Score")
     self.boton_salir1 = boton(self.pantalla, "Salir")
 
-    # Posicionamiento general
+    # Disposición de botones en menús principales
     self.boton_inicio.rect.centerx = self.ANCHO // 2
     self.boton_inicio.rect.centery = self.ALTO // 2 - 30
 
@@ -147,7 +173,7 @@ class JuegoIntruso:
     self.boton_futbol.rect.centerx = (self.ANCHO // 2) + 220
     self.boton_emojis.rect.centerx = self.ANCHO // 2
 
-    # Posicionamiento vertical ordenado para GAME OVER
+    # Disposición de botones en Game Over
     self.boton_reiniciar.rect.centerx = self.ANCHO // 2
     self.boton_reiniciar.rect.centery = self.ALTO // 2 + 20
 
@@ -157,7 +183,7 @@ class JuegoIntruso:
     self.boton_salir1.rect.centerx = self.ANCHO // 2
     self.boton_salir1.rect.centery = self.ALTO // 2 + 160
 
-    # Preparar texto en cada botón
+    # Renderizado inicial del texto en cada botón
     for b, txt in [
         (self.boton_inicio, "Jugar"),
         (self.boton_score, "Score"),
@@ -177,6 +203,7 @@ class JuegoIntruso:
       b.prepara_texto(txt)
 
   def generar_nivel(self, dificultad, categoria):
+    """Genera una nueva ronda de juego seleccionando dimensiones e íconos."""
     if dificultad == "FACIL":
       filas, columnas = 2, 2
     elif dificultad == "MEDIO":
@@ -186,23 +213,24 @@ class JuegoIntruso:
     elif dificultad == "EXTREMO":
       filas, columnas = 8, 8
 
-    cant_intrusos = 1
-    cat = random.choice(self.CATEGORIAS[categoria])
+    # Selección aleatoria de una pareja de la categoría correspondiente
+    self.pareja_actual = random.choice(self.CATEGORIAS[categoria])
+    return self.reubicar_intruso(filas, columnas, self.pareja_actual)
 
-    grid = [[cat["normal"] for _ in range(columnas)] for _ in range(filas)]
+  def reubicar_intruso(self, filas, columnas, pareja):
+    """Crea la cuadrícula y reubica el ícono intruso en una coordenada aleatoria."""
+    grid = [[pareja["normal"] for _ in range(columnas)] for _ in range(filas)]
 
-    posiciones_intrusos = set()
-    while len(posiciones_intrusos) < cant_intrusos:
-      pos_x = random.randint(0, columnas - 1)
-      pos_y = random.randint(0, filas - 1)
-      posiciones_intrusos.add((pos_x, pos_y))
+    pos_x = random.randint(0, columnas - 1)
+    pos_y = random.randint(0, filas - 1)
 
-    for pos_x, pos_y in posiciones_intrusos:
-      grid[pos_y][pos_x] = cat["intruso"]
+    posiciones_intrusos = {(pos_x, pos_y)}
+    grid[pos_y][pos_x] = pareja["intruso"]
 
     return grid, posiciones_intrusos
 
   def aplicar_penalizacion(self):
+    """Aplica descuento de puntos y de tiempo según la dificultad tras un fallo."""
     penalizaciones = {
         "FACIL": (5, 0.5),
         "MEDIO": (5, 0.5),
@@ -214,13 +242,16 @@ class JuegoIntruso:
     self.puntuacion = max(0, self.puntuacion - pts_penal)
 
   def ejecutar(self):
+    """Bucle principal de ejecución y renderizado del juego."""
     ejecutando = True
 
     while ejecutando:
-      dt = self.clock.tick(60) / 1000.0
+      dt = self.clock.tick(60) / 1000.0  # Delta time para control de tiempo
+      tiempo_actual = pygame.time.get_ticks()
       self.pantalla.blit(self.background, [0, 0])
       clic = False
 
+      # --- MANEJO DE EVENTOS TECLADO/MOUSE ---
       for evento in pygame.event.get():
         if evento.type == pygame.QUIT:
           ejecutando = False
@@ -243,10 +274,10 @@ class JuegoIntruso:
 
       mouse_pos = pygame.mouse.get_pos()
 
-      # --- ESTADO: MENU ---
+      # --- ESTADO: MENU PRINCIPAL ---
       if self.estado_juego == "MENU":
         titulo = self.fuente_titulo.render(
-            "Encuentra al Intruso", True, self.BLANCO
+            "Encuentra al Intruso", True, self.NEGRO
         )
         self.pantalla.blit(
             titulo, (self.ANCHO // 2 - titulo.get_width() // 2, 150)
@@ -262,10 +293,10 @@ class JuegoIntruso:
             self.estado_anterior = "MENU"
             self.estado_juego = "SCORES"
 
-      # --- ESTADO: SCORES ---
+      # --- ESTADO: TABLA DE PUNTAJES (SCORES) ---
       elif self.estado_juego == "SCORES":
         titulo = self.fuente_titulo.render(
-            "Puntuaciones Máximas", True, self.BLANCO
+            "Puntuaciones Máximas", True, self.NEGRO
         )
         self.pantalla.blit(
             titulo, (self.ANCHO // 2 - titulo.get_width() // 2, 120)
@@ -285,7 +316,7 @@ class JuegoIntruso:
         for dif in ["FACIL", "MEDIO", "DIFICIL", "EXTREMO"]:
           max_score = self.scores.get(dif, 0)
           linea_txt = f"{dif:<20} {max_score:<15}"
-          txt_rendered = self.fuente_texto.render(linea_txt, True, self.BLANCO)
+          txt_rendered = self.fuente_texto.render(linea_txt, True, self.NEGRO)
           self.pantalla.blit(
               txt_rendered,
               (self.ANCHO // 2 - txt_rendered.get_width() // 2, y_offset),
@@ -295,9 +326,9 @@ class JuegoIntruso:
         if clic and self.boton_regresar.rect.collidepoint(mouse_pos):
           self.estado_juego = self.estado_anterior
 
-      # --- ESTADO: DIFICULTAD ---
+      # --- ESTADO: SELECCIÓN DE DIFICULTAD ---
       elif self.estado_juego == "DIFICULTAD":
-        titulo = self.fuente_titulo.render("Dificultad", True, self.BLANCO)
+        titulo = self.fuente_titulo.render("Dificultad", True, self.NEGRO)
         self.pantalla.blit(
             titulo, (self.ANCHO // 2 - titulo.get_width() // 2, 150)
         )
@@ -324,10 +355,10 @@ class JuegoIntruso:
           elif self.boton_regresar.rect.collidepoint(mouse_pos):
             self.estado_juego = "MENU"
 
-      # --- ESTADO: CATEGORIA ---
+      # --- ESTADO: SELECCIÓN DE CATEGORÍA ---
       elif self.estado_juego == "CATEGORIA":
         titulo = self.fuente_titulo.render(
-            "Selecciona Categoría", True, self.BLANCO
+            "Selecciona Categoría", True, self.NEGRO
         )
         self.pantalla.blit(
             titulo, (self.ANCHO // 2 - titulo.get_width() // 2, 120)
@@ -356,9 +387,10 @@ class JuegoIntruso:
             self.grid, self.posiciones_intrusos = self.generar_nivel(
                 self.dificultad_actual, self.categoria_seleccionada
             )
+            self.casilla_feedback = None
             self.estado_juego = "JUGANDO"
 
-      # --- ESTADO: JUGANDO ---
+      # --- ESTADO: LÓGICA DE JUEGO PRINCIPAL ---
       elif self.estado_juego == "JUGANDO":
         self.boton_salir.dibuja_boton()
 
@@ -366,10 +398,11 @@ class JuegoIntruso:
           self.registrar_puntuacion(self.dificultad_actual, self.puntuacion)
           self.estado_juego = "GAME_OVER"
 
+        # Actualización de temporizador de la partida
         self.tiempo_restante -= dt
 
         txt_tiempo = self.fuente_texto.render(
-            f"Tiempo: {max(0, int(self.tiempo_restante))}s", True, self.BLANCO
+            f"Tiempo: {max(0, int(self.tiempo_restante))}s", True, self.NEGRO
         )
         self.pantalla.blit(txt_tiempo, (20, 50))
 
@@ -378,32 +411,58 @@ class JuegoIntruso:
           self.estado_juego = "GAME_OVER"
 
         txt_info = self.fuente_texto.render(
-            f"Puntos: {self.puntuacion}", True, self.BLANCO
+            f"Puntos: {self.puntuacion}", True, self.NEGRO
         )
         self.pantalla.blit(txt_info, (20, 20))
 
         filas = len(self.grid)
         columnas = len(self.grid[0])
 
+        # Cálculo dinámico del tamaño de celdas según resolución de ventana
         margen_x, margen_y = 100, 100
         ancho_celda = (self.ANCHO - 2 * margen_x) // columnas
         alto_celda = (self.ALTO - 2 * margen_y) // filas
 
-        area_tablero = pygame.Rect(
-            margen_x, margen_y, columnas * ancho_celda, filas * alto_celda
-        )
-        clic_en_tablero = False
+        # Transición lógica tras finalizar el resaltado visual (300 ms)
+        if self.casilla_feedback and tiempo_actual >= self.tiempo_feedback:
+          pos_fb, es_correcto = self.casilla_feedback
+          self.casilla_feedback = None
 
+          if es_correcto:
+            self.puntuacion += 20
+            bonificacion = (
+                1.5 if self.dificultad_actual in ["MEDIO", "FACIL"] else 1.0
+            )
+            self.tiempo_restante = min(
+                60.0, self.tiempo_restante + bonificacion
+            )
+            # Avanza a un nuevo nivel con nueva pareja de íconos
+            self.grid, self.posiciones_intrusos = self.generar_nivel(
+                self.dificultad_actual, self.categoria_seleccionada
+            )
+          else:
+            self.aplicar_penalizacion()
+            # Mantiene el mismo par de íconos pero reubica al intruso de casilla
+            self.grid, self.posiciones_intrusos = self.reubicar_intruso(
+                filas, columnas, self.pareja_actual
+            )
+
+        # DIBUJADO DE MATRIZ Y COMPROBACIÓN DE CLICS EN CASILLAS
         for r in range(filas):
           for c in range(columnas):
             x = margen_x + c * ancho_celda
             y = margen_y + r * alto_celda
             rect = pygame.Rect(x, y, ancho_celda - 5, alto_celda - 5)
 
-            pygame.draw.rect(
-                self.pantalla, (220, 220, 220), rect, border_radius=8
-            )
+            color_celda = self.GRIS_CELDA
 
+            # Pintar temporalmente la celda seleccionada (verde/rojo)
+            if self.casilla_feedback and self.casilla_feedback[0] == (c, r):
+              color_celda = (
+                  self.VERDE if self.casilla_feedback[1] else self.ROJO
+              )
+
+            pygame.draw.rect(self.pantalla, color_celda, rect, border_radius=8)
             texto = self.fuente.render(self.grid[r][c], True, self.NEGRO)
             self.pantalla.blit(
                 texto,
@@ -413,37 +472,29 @@ class JuegoIntruso:
                 ),
             )
 
-            if clic and rect.collidepoint(mouse_pos):
-              clic_en_tablero = True
-              if (c, r) in self.posiciones_intrusos:
-                self.puntuacion += 20
-                bonificacion = (
-                    1.5
-                    if self.dificultad_actual in ["MEDIO", "FACIL"]
-                    else 1.0
-                )
-                self.tiempo_restante = min(
-                    60.0, self.tiempo_restante + bonificacion
-                )
-                self.grid, self.posiciones_intrusos = self.generar_nivel(
-                    self.dificultad_actual, self.categoria_seleccionada
-                )
+            # --- VERIFICACIÓN DE INTERACCIÓN DIRECTA EN LA CASILLA ---
+            if (
+                clic
+                and rect.collidepoint(mouse_pos)
+                and not self.casilla_feedback
+            ):
+              es_intruso = (c, r) in self.posiciones_intrusos
+
+              if es_intruso:
+                if self.snd_correcto:
+                  self.snd_correcto.play()
               else:
-                self.aplicar_penalizacion()
+                if self.snd_incorrecto:
+                  self.snd_incorrecto.play()
 
-        if (
-            clic
-            and not clic_en_tablero
-            and not self.boton_salir.rect.collidepoint(mouse_pos)
-        ):
-          if area_tablero.collidepoint(mouse_pos):
-            self.aplicar_penalizacion()
+              self.casilla_feedback = ((c, r), es_intruso)
+              self.tiempo_feedback = tiempo_actual + 300
 
-      # --- ESTADO: GAME OVER ---
+      # --- ESTADO: GAME OVER (FIN DEL JUEGO) ---
       elif self.estado_juego == "GAME_OVER":
         txt_fin = self.fuente_titulo.render("JUEGO TERMINADO", True, self.ROJO)
         txt_mensaje = self.fuente_texto.render(
-            "Muy bien, ¿deseas reiniciar el juego?", True, self.BLANCO
+            "Muy bien, ¿deseas reiniciar el juego?", True, self.NEGRO
         )
         txt_puntos = self.fuente_texto.render(
             f"Puntuación Final: {self.puntuacion}", True, self.AMARILLO
@@ -468,7 +519,6 @@ class JuegoIntruso:
             ),
         )
 
-        # Renderizado de botones
         self.boton_reiniciar.dibuja_boton()
         self.boton_score_go.dibuja_boton()
         self.boton_salir1.dibuja_boton()
@@ -480,6 +530,7 @@ class JuegoIntruso:
             self.grid, self.posiciones_intrusos = self.generar_nivel(
                 self.dificultad_actual, self.categoria_seleccionada
             )
+            self.casilla_feedback = None
             self.estado_juego = "JUGANDO"
           elif self.boton_score_go.rect.collidepoint(mouse_pos):
             self.estado_anterior = "GAME_OVER"
@@ -488,6 +539,7 @@ class JuegoIntruso:
             self.puntuacion = 0
             self.estado_juego = "MENU"
 
+      # Actualización del búfer de la pantalla
       pygame.display.flip()
 
     pygame.quit()
