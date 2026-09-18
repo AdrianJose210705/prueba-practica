@@ -14,7 +14,7 @@ class JuegoIntruso:
     pygame.mixer.init()
 
     # --- CONFIGURACIÓN DE VENTANA ---
-    self.ANCHO, self.ALTO = 1280, 720
+    self.ANCHO, self.ALTO = 1100, 700
     self.pantalla = pygame.display.set_mode((self.ANCHO, self.ALTO))
     pygame.display.set_caption("Encuentra al Intruso")
 
@@ -92,7 +92,7 @@ class JuegoIntruso:
     self.fuente_titulo = pygame.font.SysFont("Arial", 48, bold=True)
 
     # --- RECURSOS GRÁFICOS (FONDO) ---
-    self.background = pygame.image.load("fondo1.jpg").convert()
+    self.background = pygame.image.load("imagen_inicio1.png").convert()
     self.background = pygame.transform.scale(
         self.background, (self.ANCHO, self.ALTO)
     )
@@ -303,7 +303,7 @@ class JuegoIntruso:
 
         y_offset = 220
         encabezado = self.fuente_texto.render(
-            f"{'DIFICULTAD':<20} {'PUNTAJE MÁXIMO':<15}", True, self.AMARILLO
+            f"{'DIFICULTAD':<20} {'PUNTAJE MÁXIMO':<15}", True, self.NEGRO
         )
         self.pantalla.blit(
             encabezado, (self.ANCHO // 2 - encabezado.get_width() // 2, y_offset)
@@ -494,7 +494,7 @@ class JuegoIntruso:
             "Muy bien, ¿deseas reiniciar el juego?", True, self.NEGRO
         )
         txt_puntos = self.fuente_texto.render(
-            f"Puntuación Final: {self.puntuacion}", True, self.AMARILLO
+            f"Puntuación Final: {self.puntuacion}", True, self.NEGRO
         )
 
         self.pantalla.blit(
