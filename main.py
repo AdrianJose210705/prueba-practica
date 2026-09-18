@@ -14,7 +14,7 @@ class JuegoIntruso:
     pygame.mixer.init()
 
     # --- CONFIGURACIÓN DE VENTANA ---
-    self.ANCHO, self.ALTO = 1100, 700
+    self.ANCHO, self.ALTO = 1280, 720
     self.pantalla = pygame.display.set_mode((self.ANCHO, self.ALTO))
     pygame.display.set_caption("Encuentra al Intruso")
 
@@ -54,28 +54,24 @@ class JuegoIntruso:
     # --- CONFIGURACIÓN Y ESTADO INICIAL ---
     self.categoria_seleccionada = "FRUTAS"
     self.dificultad_actual = "FACIL"
-    self.pareja_actual = (
-        None  # Almacena el par activo {"normal": ..., "intruso": ...}
-    )
+    self.pareja_actual = None
 
     self.puntuacion = 0
-    self.tiempo_restante = 60.0
+    self.vidas = 3  # Sistema de 3 vidas
     self.estado_juego = "MENU"
     self.estado_anterior = "MENU"
     self.grid = []
     self.posiciones_intrusos = set()
 
     # --- FEEDBACK VISUAL SIN BLOQUEAR PANTALLA ---
-    self.casilla_feedback = (
-        None  # Registra la posición tocada: ((col, fila), es_correcto)
-    )
-    self.tiempo_feedback = 0  # Marca de tiempo para finalizar el resaltado
+    self.casilla_feedback = None
+    self.tiempo_feedback = 0
 
     # --- SISTEMA DE PUNTAJES MÁXIMOS (PERSISTENCIA) ---
     self.archivo_scores = "scores.json"
     self.scores = self.cargar_scores()
 
-    # --- CARGA ÚNICA DE EFECTOS SONOROS (AL INICIAR EL JUEGO) ---
+    # --- CARGA ÚNICA DE EFECTOS SONOROS ---
     try:
       self.snd_correcto = pygame.mixer.Sound("correcto.mp3")
       self.snd_incorrecto = pygame.mixer.Sound("incorrecto.mp3")
@@ -87,12 +83,14 @@ class JuegoIntruso:
       self.snd_incorrecto = None
 
     # --- FUENTES Y TIPOGRAFÍAS ---
+    # Fuente con soporte Emoji para renderizar los corazones ❤️
+    self.fuente_emoji = pygame.font.SysFont("Segoe UI Emoji", 26)
     self.fuente = pygame.font.SysFont("Segoe UI Emoji", 40)
     self.fuente_texto = pygame.font.SysFont("Arial", 24, bold=True)
     self.fuente_titulo = pygame.font.SysFont("Arial", 48, bold=True)
 
     # --- RECURSOS GRÁFICOS (FONDO) ---
-    self.background = pygame.image.load("imagen_inicio1.png").convert()
+    self.background = pygame.image.load("imagan_inicio1.png").convert()
     self.background = pygame.transform.scale(
         self.background, (self.ANCHO, self.ALTO)
     )
@@ -151,7 +149,7 @@ class JuegoIntruso:
     self.boton_futbol = boton(self.pantalla, "Futbol")
     self.boton_emojis = boton(self.pantalla, "Emojis")
 
-    # Botones de Game Over
+    # Botones de la pantalla de Juego Terminado
     self.boton_reiniciar = boton(self.pantalla, "Reiniciar")
     self.boton_score_go = boton(self.pantalla, "Score")
     self.boton_salir1 = boton(self.pantalla, "Salir")
@@ -165,22 +163,40 @@ class JuegoIntruso:
     self.boton_salir.rect.topright = (self.ANCHO - 30, 30)
 
     # --- PANTALLA DE DIFICULTAD (Distribución 2x2 centrada) ---
-    self.boton_facil.rect.center = (self.ANCHO // 2 - 140, self.ALTO // 2 - 10)
-    self.boton_medio.rect.center = (self.ANCHO // 2 + 140, self.ALTO // 2 - 10)
-    self.boton_dificil.rect.center = (self.ANCHO // 2 - 140, self.ALTO // 2 + 80)
-    self.boton_extremo.rect.center = (self.ANCHO // 2 + 140, self.ALTO // 2 + 80)
+    self.boton_facil.rect.center = (
+        self.ANCHO // 2 - 140,
+        self.ALTO // 2 - 10,
+    )
+    self.boton_medio.rect.center = (
+        self.ANCHO // 2 + 140,
+        self.ALTO // 2 - 10,
+    )
+    self.boton_dificil.rect.center = (
+        self.ANCHO // 2 - 140,
+        self.ALTO // 2 + 80,
+    )
+    self.boton_extremo.rect.center = (
+        self.ANCHO // 2 + 140,
+        self.ALTO // 2 + 80,
+    )
 
     # --- PANTALLA DE CATEGORÍA (Disposición en fila centrada) ---
-    self.boton_frutas.rect.center = (self.ANCHO // 2 - 260, self.ALTO // 2 + 40)
+    self.boton_frutas.rect.center = (
+        self.ANCHO // 2 - 260,
+        self.ALTO // 2 + 40,
+    )
     self.boton_emojis.rect.center = (self.ANCHO // 2, self.ALTO // 2 + 40)
-    self.boton_futbol.rect.center = (self.ANCHO // 2 + 260, self.ALTO // 2 + 40)
+    self.boton_futbol.rect.center = (
+        self.ANCHO // 2 + 260,
+        self.ALTO // 2 + 40,
+    )
 
     # --- GAME OVER ---
     self.boton_reiniciar.rect.center = (self.ANCHO // 2, self.ALTO // 2 + 20)
     self.boton_score_go.rect.center = (self.ANCHO // 2, self.ALTO // 2 + 95)
     self.boton_salir1.rect.center = (self.ANCHO // 2, self.ALTO // 2 + 170)
 
-    # Cargar textos
+    # Renderizado inicial del texto en cada botón
     for b, txt in [
         (self.boton_inicio, "Jugar"),
         (self.boton_score, "Score"),
@@ -210,7 +226,6 @@ class JuegoIntruso:
     elif dificultad == "EXTREMO":
       filas, columnas = 8, 8
 
-    # Selección aleatoria de una pareja de la categoría correspondiente
     self.pareja_actual = random.choice(self.CATEGORIAS[categoria])
     return self.reubicar_intruso(filas, columnas, self.pareja_actual)
 
@@ -227,15 +242,15 @@ class JuegoIntruso:
     return grid, posiciones_intrusos
 
   def aplicar_penalizacion(self):
-    """Aplica descuento de puntos y de tiempo según la dificultad tras un fallo."""
+    """Resta 1 vida y deduce puntos según la dificultad tras un fallo."""
     penalizaciones = {
-        "FACIL": (5, 0.5),
-        "MEDIO": (5, 0.5),
-        "DIFICIL": (10, 0.8),
-        "EXTREMO": (15, 1.0),
+        "FACIL": 5,
+        "MEDIO": 5,
+        "DIFICIL": 10,
+        "EXTREMO": 15,
     }
-    pts_penal, t_penal = penalizaciones.get(self.dificultad_actual, (5, 0.5))
-    self.tiempo_restante = max(0.0, self.tiempo_restante - t_penal)
+    pts_penal = penalizaciones.get(self.dificultad_actual, 5)
+    self.vidas -= 1  # Resta 1 vida por error
     self.puntuacion = max(0, self.puntuacion - pts_penal)
 
   def ejecutar(self):
@@ -243,7 +258,7 @@ class JuegoIntruso:
     ejecutando = True
 
     while ejecutando:
-      dt = self.clock.tick(60) / 1000.0  # Delta time para control de tiempo
+      dt = self.clock.tick(60) / 1000.0
       tiempo_actual = pygame.time.get_ticks()
       self.pantalla.blit(self.background, [0, 0])
       clic = False
@@ -313,7 +328,7 @@ class JuegoIntruso:
         for dif in ["FACIL", "MEDIO", "DIFICIL", "EXTREMO"]:
           max_score = self.scores.get(dif, 0)
           linea_txt = f"{dif:<20} {max_score:<15}"
-          txt_rendered = self.fuente_texto.render(linea_txt, True, self.NEGRO)
+          txt_rendered = self.fuente_texto.render(linea_txt, True, self.BLANCO)
           self.pantalla.blit(
               txt_rendered,
               (self.ANCHO // 2 - txt_rendered.get_width() // 2, y_offset),
@@ -331,10 +346,10 @@ class JuegoIntruso:
         )
 
         self.boton_facil.dibuja_boton()
-        self.boton_regresar.dibuja_boton()
         self.boton_medio.dibuja_boton()
         self.boton_dificil.dibuja_boton()
         self.boton_extremo.dibuja_boton()
+        self.boton_regresar.dibuja_boton()
 
         if clic:
           if self.boton_facil.rect.collidepoint(mouse_pos):
@@ -380,7 +395,7 @@ class JuegoIntruso:
           if categoria_elegida:
             self.categoria_seleccionada = categoria_elegida
             self.puntuacion = 0
-            self.tiempo_restante = 60.0
+            self.vidas = 3  # Inicia con 3 vidas
             self.grid, self.posiciones_intrusos = self.generar_nivel(
                 self.dificultad_actual, self.categoria_seleccionada
             )
@@ -395,56 +410,52 @@ class JuegoIntruso:
           self.registrar_puntuacion(self.dificultad_actual, self.puntuacion)
           self.estado_juego = "GAME_OVER"
 
-        # Actualización de temporizador de la partida
-        self.tiempo_restante -= dt
-
-        txt_tiempo = self.fuente_texto.render(
-            f"Tiempo: {max(0, int(self.tiempo_restante))}s", True, self.NEGRO
-        )
-        self.pantalla.blit(txt_tiempo, (20, 50))
-
-        if self.tiempo_restante <= 0:
-          self.registrar_puntuacion(self.dificultad_actual, self.puntuacion)
-          self.estado_juego = "GAME_OVER"
-
+        # DIBUJAR PUNTUACIÓN Y CORAZONES DE VIDAS
         txt_info = self.fuente_texto.render(
             f"Puntos: {self.puntuacion}", True, self.NEGRO
         )
         self.pantalla.blit(txt_info, (20, 20))
 
+        # Renderizar vidas con formato de corazones (ejemplo: ❤️ ❤️ ❤️)
+        string_corazones = "❤️ " * self.vidas
+        txt_vidas = self.fuente_emoji.render(
+            f"Vidas: {string_corazones}", True, self.NEGRO
+        )
+        self.pantalla.blit(txt_vidas, (20, 55))
+
         filas = len(self.grid)
         columnas = len(self.grid[0])
 
-        # Cálculo dinámico del tamaño de celdas según resolución de ventana
         margen_x, margen_y = 100, 100
         ancho_celda = (self.ANCHO - 2 * margen_x) // columnas
         alto_celda = (self.ALTO - 2 * margen_y) // filas
 
-        # Transición lógica tras finalizar el resaltado visual (300 ms)
+        # Procesar feedback tras 300 ms
         if self.casilla_feedback and tiempo_actual >= self.tiempo_feedback:
           pos_fb, es_correcto = self.casilla_feedback
           self.casilla_feedback = None
 
           if es_correcto:
-            self.puntuacion += 20
-            bonificacion = (
-                1.5 if self.dificultad_actual in ["MEDIO", "FACIL"] else 1.0
-            )
-            self.tiempo_restante = min(
-                60.0, self.tiempo_restante + bonificacion
-            )
-            # Avanza a un nuevo nivel con nueva pareja de íconos
+            self.puntuacion += 25
             self.grid, self.posiciones_intrusos = self.generar_nivel(
                 self.dificultad_actual, self.categoria_seleccionada
             )
           else:
             self.aplicar_penalizacion()
-            # Mantiene el mismo par de íconos pero reubica al intruso de casilla
-            self.grid, self.posiciones_intrusos = self.reubicar_intruso(
-                filas, columnas, self.pareja_actual
-            )
 
-        # DIBUJADO DE MATRIZ Y COMPROBACIÓN DE CLICS EN CASILLAS
+            # Verificar si se terminaron las vidas para pasar a Game Over
+            if self.vidas <= 0:
+              self.registrar_puntuacion(
+                  self.dificultad_actual, self.puntuacion
+              )
+              self.estado_juego = "GAME_OVER"
+            else:
+              # Reubicar al intruso si le restan vidas
+              self.grid, self.posiciones_intrusos = self.reubicar_intruso(
+                  filas, columnas, self.pareja_actual
+              )
+
+        # DIBUJADO DE MATRIZ Y COMPROBACIÓN DE CLIC
         for r in range(filas):
           for c in range(columnas):
             x = margen_x + c * ancho_celda
@@ -453,7 +464,6 @@ class JuegoIntruso:
 
             color_celda = self.GRIS_CELDA
 
-            # Pintar temporalmente la celda seleccionada (verde/rojo)
             if self.casilla_feedback and self.casilla_feedback[0] == (c, r):
               color_celda = (
                   self.VERDE if self.casilla_feedback[1] else self.ROJO
@@ -469,7 +479,7 @@ class JuegoIntruso:
                 ),
             )
 
-            # --- VERIFICACIÓN DE INTERACCIÓN DIRECTA EN LA CASILLA ---
+            # Verificación de interacción directa
             if (
                 clic
                 and rect.collidepoint(mouse_pos)
@@ -491,7 +501,7 @@ class JuegoIntruso:
       elif self.estado_juego == "GAME_OVER":
         txt_fin = self.fuente_titulo.render("JUEGO TERMINADO", True, self.ROJO)
         txt_mensaje = self.fuente_texto.render(
-            "Muy bien, ¿deseas reiniciar el juego?", True, self.NEGRO
+            "Te has quedado sin vidas deseas reiniciar", True, self.NEGRO
         )
         txt_puntos = self.fuente_texto.render(
             f"Puntuación Final: {self.puntuacion}", True, self.NEGRO
@@ -523,7 +533,7 @@ class JuegoIntruso:
         if clic:
           if self.boton_reiniciar.rect.collidepoint(mouse_pos):
             self.puntuacion = 0
-            self.tiempo_restante = 60.0
+            self.vidas = 3  # Reinicia a 3 vidas
             self.grid, self.posiciones_intrusos = self.generar_nivel(
                 self.dificultad_actual, self.categoria_seleccionada
             )
@@ -536,7 +546,6 @@ class JuegoIntruso:
             self.puntuacion = 0
             self.estado_juego = "MENU"
 
-      # Actualización del búfer de la pantalla
       pygame.display.flip()
 
     pygame.quit()
