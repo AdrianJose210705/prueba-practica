@@ -328,7 +328,7 @@ class JuegoIntruso:
         for dif in ["FACIL", "MEDIO", "DIFICIL", "EXTREMO"]:
           max_score = self.scores.get(dif, 0)
           linea_txt = f"{dif:<20} {max_score:<15}"
-          txt_rendered = self.fuente_texto.render(linea_txt, True, self.BLANCO)
+          txt_rendered = self.fuente_texto.render(linea_txt, True, self.NEGRO)
           self.pantalla.blit(
               txt_rendered,
               (self.ANCHO // 2 - txt_rendered.get_width() // 2, y_offset),
