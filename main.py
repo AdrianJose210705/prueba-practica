@@ -138,52 +138,49 @@ class JuegoIntruso:
       self.guardar_scores()
 
   def inicializar_botones(self):
-    """Crea y posiciona todos los botones de los menús e interfaces."""
+    """Crea y posiciona todos los botones con una distribución limpia."""
     self.boton_inicio = boton(self.pantalla, "Jugar")
     self.boton_score = boton(self.pantalla, "Score")
     self.boton_facil = boton(self.pantalla, "Facil")
-    self.boton_regresar = boton(self.pantalla, "Regresar")
     self.boton_medio = boton(self.pantalla, "Medio")
     self.boton_dificil = boton(self.pantalla, "Dificil")
     self.boton_extremo = boton(self.pantalla, "Extremo")
+    self.boton_regresar = boton(self.pantalla, "Regresar")
     self.boton_salir = boton(self.pantalla, "Salir")
     self.boton_frutas = boton(self.pantalla, "Frutas")
     self.boton_futbol = boton(self.pantalla, "Futbol")
     self.boton_emojis = boton(self.pantalla, "Emojis")
 
-    # Botones de la pantalla de Juego Terminado
+    # Botones de Game Over
     self.boton_reiniciar = boton(self.pantalla, "Reiniciar")
     self.boton_score_go = boton(self.pantalla, "Score")
     self.boton_salir1 = boton(self.pantalla, "Salir")
 
-    # Disposición de botones en menús principales
-    self.boton_inicio.rect.centerx = self.ANCHO // 2
-    self.boton_inicio.rect.centery = self.ALTO // 2 - 30
+    # --- MENÚ PRINCIPAL ---
+    self.boton_inicio.rect.center = (self.ANCHO // 2, self.ALTO // 2 - 20)
+    self.boton_score.rect.center = (self.ANCHO // 2, self.ALTO // 2 + 70)
 
-    self.boton_score.rect.centerx = self.ANCHO // 2
-    self.boton_score.rect.centery = self.ALTO // 2 + 40
+    # --- BOTONES GENERALES DE NAVEGACIÓN ---
+    self.boton_regresar.rect.topleft = (30, 30)
+    self.boton_salir.rect.topright = (self.ANCHO - 30, 30)
 
-    self.boton_regresar.rect.topleft = (20, 20)
-    self.boton_medio.rect.centerx = self.ANCHO // 2
-    self.boton_facil.rect.centerx = (self.ANCHO // 2) - 220
-    self.boton_dificil.rect.centerx = (self.ANCHO // 2) + 220
-    self.boton_extremo.rect.centery = int(self.ALTO // 1.5)
-    self.boton_salir.rect.topright = (self.ANCHO - 20, 20)
-    self.boton_frutas.rect.centerx = (self.ANCHO // 2) - 220
-    self.boton_futbol.rect.centerx = (self.ANCHO // 2) + 220
-    self.boton_emojis.rect.centerx = self.ANCHO // 2
+    # --- PANTALLA DE DIFICULTAD (Distribución 2x2 centrada) ---
+    self.boton_facil.rect.center = (self.ANCHO // 2 - 140, self.ALTO // 2 - 10)
+    self.boton_medio.rect.center = (self.ANCHO // 2 + 140, self.ALTO // 2 - 10)
+    self.boton_dificil.rect.center = (self.ANCHO // 2 - 140, self.ALTO // 2 + 80)
+    self.boton_extremo.rect.center = (self.ANCHO // 2 + 140, self.ALTO // 2 + 80)
 
-    # Disposición de botones en Game Over
-    self.boton_reiniciar.rect.centerx = self.ANCHO // 2
-    self.boton_reiniciar.rect.centery = self.ALTO // 2 + 20
+    # --- PANTALLA DE CATEGORÍA (Disposición en fila centrada) ---
+    self.boton_frutas.rect.center = (self.ANCHO // 2 - 260, self.ALTO // 2 + 40)
+    self.boton_emojis.rect.center = (self.ANCHO // 2, self.ALTO // 2 + 40)
+    self.boton_futbol.rect.center = (self.ANCHO // 2 + 260, self.ALTO // 2 + 40)
 
-    self.boton_score_go.rect.centerx = self.ANCHO // 2
-    self.boton_score_go.rect.centery = self.ALTO // 2 + 90
+    # --- GAME OVER ---
+    self.boton_reiniciar.rect.center = (self.ANCHO // 2, self.ALTO // 2 + 20)
+    self.boton_score_go.rect.center = (self.ANCHO // 2, self.ALTO // 2 + 95)
+    self.boton_salir1.rect.center = (self.ANCHO // 2, self.ALTO // 2 + 170)
 
-    self.boton_salir1.rect.centerx = self.ANCHO // 2
-    self.boton_salir1.rect.centery = self.ALTO // 2 + 160
-
-    # Renderizado inicial del texto en cada botón
+    # Cargar textos
     for b, txt in [
         (self.boton_inicio, "Jugar"),
         (self.boton_score, "Score"),
