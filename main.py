@@ -71,19 +71,28 @@ class JuegoIntruso:
     self.archivo_scores = "scores.json"
     self.scores = self.cargar_scores()
 
-    # --- CARGA ÚNICA DE EFECTOS SONOROS ---
+    # --- CARGA ÚNICA DE EFECTOS SONOROS Y MÚSICA ---
     try:
       self.snd_correcto = pygame.mixer.Sound("correcto.mp3")
       self.snd_incorrecto = pygame.mixer.Sound("incorrecto.mp3")
+      self.snd_click = pygame.mixer.Sound("click.mp3")
+
       self.snd_correcto.set_volume(0.7)
       self.snd_incorrecto.set_volume(0.3)
+      self.snd_click.set_volume(0.5)
+
+      # Cargar y reproducir música de fondo en bucle infinito (-1)
+      pygame.mixer.music.load("musica_fondo2.mp3")
+      pygame.mixer.music.set_volume(0.3)
+      pygame.mixer.music.play(-1)
+
     except Exception as e:
-      print(f"Aviso: No se pudieron cargar los efectos de sonido: {e}")
+      print(f"Aviso: No se pudieron cargar los recursos de audio: {e}")
       self.snd_correcto = None
       self.snd_incorrecto = None
+      self.snd_click = None
 
     # --- FUENTES Y TIPOGRAFÍAS ---
-    # Fuente con soporte Emoji para renderizar los corazones ❤️
     self.fuente_emoji = pygame.font.SysFont("Segoe UI Emoji", 26)
     self.fuente = pygame.font.SysFont("Segoe UI Emoji", 40)
     self.fuente_texto = pygame.font.SysFont("Arial", 24, bold=True)
@@ -97,6 +106,11 @@ class JuegoIntruso:
 
     # Inicialización de la interfaz de botones
     self.inicializar_botones()
+
+  def reproducir_click(self):
+    """Auxiliar para reproducir el sonido de clic de botón."""
+    if self.snd_click:
+      self.snd_click.play()
 
   def cargar_scores(self):
     """Carga los puntajes máximos desde el archivo JSON si existe."""
@@ -272,6 +286,7 @@ class JuegoIntruso:
             clic = True
         elif evento.type == pygame.KEYDOWN:
           if evento.key == pygame.K_ESCAPE:
+            self.reproducir_click()
             if self.estado_juego in ["DIFICULTAD", "CATEGORIA"]:
               self.estado_juego = "MENU"
             elif self.estado_juego == "SCORES":
@@ -300,8 +315,10 @@ class JuegoIntruso:
 
         if clic:
           if self.boton_inicio.rect.collidepoint(mouse_pos):
+            self.reproducir_click()
             self.estado_juego = "DIFICULTAD"
           elif self.boton_score.rect.collidepoint(mouse_pos):
+            self.reproducir_click()
             self.estado_anterior = "MENU"
             self.estado_juego = "SCORES"
 
@@ -336,6 +353,7 @@ class JuegoIntruso:
           y_offset += 45
 
         if clic and self.boton_regresar.rect.collidepoint(mouse_pos):
+          self.reproducir_click()
           self.estado_juego = self.estado_anterior
 
       # --- ESTADO: SELECCIÓN DE DIFICULTAD ---
@@ -353,18 +371,23 @@ class JuegoIntruso:
 
         if clic:
           if self.boton_facil.rect.collidepoint(mouse_pos):
+            self.reproducir_click()
             self.dificultad_actual = "FACIL"
             self.estado_juego = "CATEGORIA"
           elif self.boton_medio.rect.collidepoint(mouse_pos):
+            self.reproducir_click()
             self.dificultad_actual = "MEDIO"
             self.estado_juego = "CATEGORIA"
           elif self.boton_dificil.rect.collidepoint(mouse_pos):
+            self.reproducir_click()
             self.dificultad_actual = "DIFICIL"
             self.estado_juego = "CATEGORIA"
           elif self.boton_extremo.rect.collidepoint(mouse_pos):
+            self.reproducir_click()
             self.dificultad_actual = "EXTREMO"
             self.estado_juego = "CATEGORIA"
           elif self.boton_regresar.rect.collidepoint(mouse_pos):
+            self.reproducir_click()
             self.estado_juego = "MENU"
 
       # --- ESTADO: SELECCIÓN DE CATEGORÍA ---
@@ -384,18 +407,22 @@ class JuegoIntruso:
         if clic:
           categoria_elegida = None
           if self.boton_frutas.rect.collidepoint(mouse_pos):
+            self.reproducir_click()
             categoria_elegida = "FRUTAS"
           elif self.boton_futbol.rect.collidepoint(mouse_pos):
+            self.reproducir_click()
             categoria_elegida = "FUTBOL"
           elif self.boton_emojis.rect.collidepoint(mouse_pos):
+            self.reproducir_click()
             categoria_elegida = "EMOJIS"
           elif self.boton_regresar.rect.collidepoint(mouse_pos):
+            self.reproducir_click()
             self.estado_juego = "DIFICULTAD"
 
           if categoria_elegida:
             self.categoria_seleccionada = categoria_elegida
             self.puntuacion = 0
-            self.vidas = 3  # Inicia con 3 vidas
+            self.vidas = 3
             self.grid, self.posiciones_intrusos = self.generar_nivel(
                 self.dificultad_actual, self.categoria_seleccionada
             )
@@ -407,6 +434,7 @@ class JuegoIntruso:
         self.boton_salir.dibuja_boton()
 
         if clic and self.boton_salir.rect.collidepoint(mouse_pos):
+          self.reproducir_click()
           self.registrar_puntuacion(self.dificultad_actual, self.puntuacion)
           self.estado_juego = "GAME_OVER"
 
@@ -416,7 +444,6 @@ class JuegoIntruso:
         )
         self.pantalla.blit(txt_info, (20, 20))
 
-        # Renderizar vidas con formato de corazones (ejemplo: ❤️ ❤️ ❤️)
         string_corazones = "❤️ " * self.vidas
         txt_vidas = self.fuente_emoji.render(
             f"Vidas: {string_corazones}", True, self.NEGRO
@@ -430,7 +457,6 @@ class JuegoIntruso:
         ancho_celda = (self.ANCHO - 2 * margen_x) // columnas
         alto_celda = (self.ALTO - 2 * margen_y) // filas
 
-        # Procesar feedback tras 300 ms
         if self.casilla_feedback and tiempo_actual >= self.tiempo_feedback:
           pos_fb, es_correcto = self.casilla_feedback
           self.casilla_feedback = None
@@ -443,19 +469,17 @@ class JuegoIntruso:
           else:
             self.aplicar_penalizacion()
 
-            # Verificar si se terminaron las vidas para pasar a Game Over
             if self.vidas <= 0:
               self.registrar_puntuacion(
                   self.dificultad_actual, self.puntuacion
               )
               self.estado_juego = "GAME_OVER"
             else:
-              # Reubicar al intruso si le restan vidas
               self.grid, self.posiciones_intrusos = self.reubicar_intruso(
                   filas, columnas, self.pareja_actual
               )
 
-        # DIBUJADO DE MATRIZ Y COMPROBACIÓN DE CLIC
+        # DIBUJADO DE MATRIZ Y COMPROBACIÓN DE CLIC EN CELDAS
         for r in range(filas):
           for c in range(columnas):
             x = margen_x + c * ancho_celda
@@ -479,7 +503,6 @@ class JuegoIntruso:
                 ),
             )
 
-            # Verificación de interacción directa
             if (
                 clic
                 and rect.collidepoint(mouse_pos)
@@ -532,17 +555,20 @@ class JuegoIntruso:
 
         if clic:
           if self.boton_reiniciar.rect.collidepoint(mouse_pos):
+            self.reproducir_click()
             self.puntuacion = 0
-            self.vidas = 3  # Reinicia a 3 vidas
+            self.vidas = 3
             self.grid, self.posiciones_intrusos = self.generar_nivel(
                 self.dificultad_actual, self.categoria_seleccionada
             )
             self.casilla_feedback = None
             self.estado_juego = "JUGANDO"
           elif self.boton_score_go.rect.collidepoint(mouse_pos):
+            self.reproducir_click()
             self.estado_anterior = "GAME_OVER"
             self.estado_juego = "SCORES"
           elif self.boton_salir1.rect.collidepoint(mouse_pos):
+            self.reproducir_click()
             self.puntuacion = 0
             self.estado_juego = "MENU"
 
