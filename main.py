@@ -13,6 +13,11 @@ class JuegoIntruso:
     pygame.mixer.init()
 
     self.ANCHO, self.ALTO = 1280, 720
+    # 1. Cargar la imagen y establecerla como icono de la ventana
+    icono = pygame.image.load(
+        "titulo_1.png"
+    )  # Asegúrate de colocar el nombre exacto de tu archivo
+    pygame.display.set_icon(icono)
     self.pantalla = pygame.display.set_mode((self.ANCHO, self.ALTO))
     pygame.display.set_caption("Encuentra al Intruso")
 
@@ -90,6 +95,14 @@ class JuegoIntruso:
         self.background, (self.ANCHO, self.ALTO)
     )
 
+    # Carga del logo de título ilustrado
+    try:
+        self.img_logo_titulo = pygame.image.load("titulo_1.png").convert_alpha()
+        # Escalar el logo a un tamaño adecuado para el encabezado 
+        self.img_logo_titulo = pygame.transform.smoothscale(self.img_logo_titulo, (450, 220))
+    except Exception:
+        self.img_logo_titulo = None
+    
     self.inicializar_botones()
 
   def reproducir_click(self):
@@ -270,12 +283,18 @@ class JuegoIntruso:
       mouse_pos = pygame.mouse.get_pos()
 
       if self.estado_juego == "MENU":
-        titulo = self.fuente_titulo.render(
-            "Encuentra al Intruso", True, self.NEGRO
-        )
-        self.pantalla.blit(
-            titulo, (self.ANCHO // 2 - titulo.get_width() // 2, 150)
-        )
+        if self.img_logo_titulo:
+          rect_logo = self.img_logo_titulo.get_rect(
+              center=(self.ANCHO // 2, 160)
+          )
+          self.pantalla.blit(self.img_logo_titulo, rect_logo)
+        else:
+          titulo = self.fuente_titulo.render(
+              "Encuentra al Intruso", True, self.NEGRO
+          )
+          self.pantalla.blit(
+              titulo, (self.ANCHO // 2 - titulo.get_width() // 2, 150)
+          )
 
         self.boton_inicio.dibuja_boton()
         self.boton_score.dibuja_boton()
@@ -482,9 +501,9 @@ class JuegoIntruso:
               self.tiempo_feedback = tiempo_actual + 300
 
       elif self.estado_juego == "GAME_OVER":
-        txt_fin = self.fuente_titulo.render("JUEGO TERMINADO", True, self.ROJO)
+        txt_fin = self.fuente_titulo.render("!Ups NO TIENES VIDAS", True, self.ROJO)
         txt_mensaje = self.fuente_texto.render(
-            "Te has quedado sin vidas deseas reiniciar", True, self.NEGRO
+            "Deseas Reiniciar...", True, self.NEGRO
         )
         txt_puntos = self.fuente_texto.render(
             f"Puntuación Final: {self.puntuacion}", True, self.NEGRO
